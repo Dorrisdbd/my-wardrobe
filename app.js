@@ -723,7 +723,6 @@ function render() {
   elements.outfitView.classList.toggle("hidden", currentView !== "outfits");
   elements.closetView.classList.toggle("hidden", currentView !== "closet");
   elements.replicaFilterWrap.classList.toggle("hidden", currentView !== "outfits");
-  elements.typeFilterWrap.classList.toggle("hidden", currentView !== "closet");
   elements.statusFilterWrap.classList.toggle("hidden", currentView !== "closet");
   renderFilters();
   renderCards();
@@ -740,7 +739,9 @@ function renderFilters() {
   const colors = currentView === "outfits"
     ? state.outfits.map((item) => item.mainColor)
     : state.closetItems.map((item) => item.mainColor);
-  const types = state.closetItems.map((item) => item.type);
+  const types = currentView === "outfits"
+    ? state.outfits.flatMap((outfit) => outfit.linkedItemIds.map(findClosetItem).filter(Boolean).map((item) => item.type))
+    : state.closetItems.map((item) => item.type);
   const statuses = state.closetItems.map((item) => item.status);
 
   fillSelect(elements.styleFilter, "全部风格", unique(styles));
@@ -819,6 +820,7 @@ function matchesOutfitFilters(outfit) {
     && (!elements.styleFilter.value || outfit.styles.includes(elements.styleFilter.value))
     && (!elements.seasonFilter.value || outfit.seasons.includes(elements.seasonFilter.value))
     && (!elements.colorFilter.value || outfit.mainColor === elements.colorFilter.value)
+    && (!elements.typeFilter.value || linkedItems.some((item) => item.type === elements.typeFilter.value))
     && (!elements.replicaFilter.value || outfit.replicaStatus === elements.replicaFilter.value);
 }
 
