@@ -1,0 +1,19 @@
+{
+  "name": "私人衣橱",
+  "short_name": "衣橱",
+  "description": "私人穿搭灵感与衣柜管理工具",
+  "id": "./",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fbfbfa",
+  "theme_color": "#f7f7f5",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

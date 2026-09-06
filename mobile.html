@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f7f5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="私人衣橱" />
+    <title>私人衣橱 · 手机效果预览</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
+    <link rel="icon" href="./icon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="mobile-preview">
+    <div class="phone-frame">
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-mark">W</div>
+            <div>
+              <h1>私人衣橱</h1>
+              <p>灵感和真实衣柜放在一起</p>
+            </div>
+          </div>
+
+          <nav class="nav-tabs" aria-label="主导航">
+            <button class="nav-tab active" data-view="outfits" type="button">穿搭灵感</button>
+            <button class="nav-tab" data-view="closet" type="button">我的衣柜</button>
+          </nav>
+
+          <section class="summary">
+            <div>
+              <span id="outfitCount">0</span>
+              <small>收藏穿搭</small>
+            </div>
+            <div>
+              <span id="closetCount">0</span>
+              <small>衣柜单品</small>
+            </div>
+            <div>
+              <span id="readyCount">0</span>
+              <small>可复刻</small>
+            </div>
+          </section>
+        </aside>
+
+        <main class="workspace">
+          <header class="topbar">
+            <div>
+              <p class="eyebrow">Local first wardrobe planner</p>
+              <h2 id="viewTitle">穿搭灵感库</h2>
+            </div>
+            <div class="actions">
+              <button id="resetDemo" class="secondary" type="button">重置示例</button>
+              <button id="exportData" class="secondary" type="button">导出</button>
+              <label class="secondary import-button">
+                导入
+                <input id="importData" type="file" accept="application/json" />
+              </label>
+              <button id="openAddItem" class="secondary" type="button">新增单品</button>
+              <button id="openAddOutfit" class="primary" type="button">新增穿搭</button>
+            </div>
+          </header>
+
+          <section class="filters" aria-label="筛选">
+            <label>
+              <span>搜索</span>
+              <input id="searchInput" type="search" placeholder="标题、款式、备注、单品" />
+            </label>
+            <label>
+              <span>风格</span>
+              <select id="styleFilter"></select>
+            </label>
+            <label>
+              <span>季节</span>
+              <select id="seasonFilter"></select>
+            </label>
+            <label>
+              <span>主色</span>
+              <select id="colorFilter"></select>
+            </label>
+            <label id="replicaFilterWrap">
+              <span>复刻状态</span>
+              <select id="replicaFilter"></select>
+            </label>
+          </section>
+
+          <section id="outfitView" class="content-grid" aria-live="polite"></section>
+          <section id="closetView" class="content-grid hidden" aria-live="polite"></section>
+        </main>
+      </div>
+
+      <dialog id="outfitDialog">
+        <form id="outfitForm" method="dialog" class="modal-form">
+          <header>
+            <h3>新增穿搭灵感</h3>
+            <button class="icon-button" value="cancel" type="button" data-close="outfitDialog">x</button>
+          </header>
+
+          <div class="form-grid">
+            <label>
+              <span>标题</span>
+              <input name="title" required placeholder="灰色西装通勤穿搭" />
+            </label>
+            <label>
+              <span>图片链接</span>
+              <input name="image" placeholder="https://..." />
+            </label>
+            <label>
+              <span>本地图片</span>
+              <input name="imageFile" type="file" accept="image/*" />
+            </label>
+            <div class="tag-field" data-field="styles" data-label="风格" data-required="true"></div>
+            <div class="tag-field" data-field="seasons" data-label="季节" data-required="true"></div>
+            <div class="tag-field" data-field="mainColor" data-label="主色" data-required="true" data-single="true"></div>
+            <div class="tag-field" data-field="pieces" data-label="款式" data-required="true"></div>
+            <div class="tag-field" data-field="occasions" data-label="场景"></div>
+            <label>
+              <span>复刻状态</span>
+              <select name="replicaStatus">
+                <option>可复刻</option>
+                <option>缺少单品</option>
+                <option>仅作灵感</option>
+              </select>
+            </label>
+            <label class="full">
+              <span>关联衣柜单品</span>
+              <select name="linkedItems" multiple size="5"></select>
+            </label>
+            <label class="full">
+              <span>备注</span>
+              <textarea name="notes" placeholder="喜欢上短下长、灰黑配色，适合通勤。"></textarea>
+            </label>
+          </div>
+
+          <footer>
+            <button class="secondary" type="button" data-close="outfitDialog">取消</button>
+            <button class="primary" type="submit">保存穿搭</button>
+          </footer>
+        </form>
+      </dialog>
+
+      <dialog id="itemDialog">
+        <form id="itemForm" method="dialog" class="modal-form">
+          <header>
+            <h3>新增衣柜单品</h3>
+            <button class="icon-button" value="cancel" type="button" data-close="itemDialog">x</button>
+          </header>
+
+          <div class="form-grid">
+            <label>
+              <span>名称</span>
+              <input name="name" required placeholder="黑色直筒裤" />
+            </label>
+            <label>
+              <span>图片链接</span>
+              <input name="image" placeholder="https://..." />
+            </label>
+            <label>
+              <span>本地图片</span>
+              <input name="imageFile" type="file" accept="image/*" />
+            </label>
+            <label>
+              <span>类型</span>
+              <select name="type">
+                <option>外套</option>
+                <option>上衣</option>
+                <option>裤子</option>
+                <option>裙子</option>
+                <option>鞋</option>
+                <option>包</option>
+                <option>配饰</option>
+              </select>
+            </label>
+            <div class="tag-field" data-field="piece" data-label="款式" data-required="true" data-single="true"></div>
+            <div class="tag-field" data-field="mainColor" data-label="主色" data-required="true" data-single="true"></div>
+            <div class="tag-field" data-field="seasons" data-label="季节" data-required="true"></div>
+            <div class="tag-field" data-field="styles" data-label="风格"></div>
+            <label>
+              <span>状态</span>
+              <select name="status">
+                <option>已拥有</option>
+                <option>想买</option>
+                <option>已淘汰</option>
+              </select>
+            </label>
+            <label class="full">
+              <span>备注</span>
+              <textarea name="notes" placeholder="版型、尺码、适合场景等"></textarea>
+            </label>
+          </div>
+
+          <footer>
+            <button class="secondary" type="button" data-close="itemDialog">取消</button>
+            <button class="primary" type="submit">保存单品</button>
+          </footer>
+        </form>
+      </dialog>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
