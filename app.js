@@ -131,6 +131,8 @@ const demoData = {
 let db;
 let state = { closetItems: [], outfits: [] };
 let currentView = "outfits";
+let editingOutfitId = null;
+let editingItemId = null;
 
 const defaultTags = {
   styles: ["通勤", "韩系", "法式", "休闲", "甜酷", "极简", "美式复古", "温柔"],
@@ -170,16 +172,11 @@ document.querySelectorAll(".nav-tab").forEach((button) => {
 });
 
 document.querySelector("#openAddOutfit").addEventListener("click", () => {
-  elements.outfitForm.reset();
-  fillLinkedItemOptions();
-  initializeFormTagPickers(elements.outfitForm);
-  openDialog(elements.outfitDialog);
+  openOutfitForm();
 });
 
 document.querySelector("#openAddItem").addEventListener("click", () => {
-  elements.itemForm.reset();
-  initializeFormTagPickers(elements.itemForm);
-  openDialog(elements.itemDialog);
+  openItemForm();
 });
 
 document.querySelector("#resetDemo").addEventListener("click", async () => {
@@ -233,10 +230,11 @@ elements.outfitForm.addEventListener("submit", async (event) => {
     const formData = new FormData(elements.outfitForm);
     const linkedItemIds = Array.from(elements.outfitForm.linkedItems.selectedOptions).map((option) => option.value);
     const uploadedImage = await readImageFile(elements.outfitForm.imageFile.files[0]);
+    const currentOutfit = editingOutfitId ? state.outfits.find((outfit) => outfit.id === editingOutfitId) : null;
     const outfit = {
-      id: crypto.randomUUID(),
+      id: editingOutfitId || crypto.randomUUID(),
       title: formData.get("title").trim(),
-      image: uploadedImage || formData.get("image").trim(),
+      image: uploadedImage || formData.get("image").trim() || currentOutfit?.image || "",
       styles: getTagFieldValues(elements.outfitForm, "styles"),
       seasons: getTagFieldValues(elements.outfitForm, "seasons"),
       mainColor: getTagFieldValues(elements.outfitForm, "mainColor")[0],
@@ -245,12 +243,14 @@ elements.outfitForm.addEventListener("submit", async (event) => {
       replicaStatus: formData.get("replicaStatus"),
       linkedItemIds,
       notes: formData.get("notes").trim(),
-      createdAt: Date.now()
+      createdAt: currentOutfit?.createdAt || Date.now(),
+      updatedAt: Date.now()
     };
 
     await saveOutfit(outfit);
     state = await loadState();
     elements.outfitDialog.close();
+    editingOutfitId = null;
     render();
   } catch (error) {
     alert(error.message);
@@ -262,10 +262,11 @@ elements.itemForm.addEventListener("submit", async (event) => {
   try {
     const formData = new FormData(elements.itemForm);
     const uploadedImage = await readImageFile(elements.itemForm.imageFile.files[0]);
+    const currentItem = editingItemId ? state.closetItems.find((item) => item.id === editingItemId) : null;
     const item = {
-      id: crypto.randomUUID(),
+      id: editingItemId || crypto.randomUUID(),
       name: formData.get("name").trim(),
-      image: uploadedImage || formData.get("image").trim(),
+      image: uploadedImage || formData.get("image").trim() || currentItem?.image || "",
       type: formData.get("type"),
       piece: getTagFieldValues(elements.itemForm, "piece")[0],
       mainColor: getTagFieldValues(elements.itemForm, "mainColor")[0],
@@ -273,16 +274,32 @@ elements.itemForm.addEventListener("submit", async (event) => {
       styles: getTagFieldValues(elements.itemForm, "styles"),
       status: formData.get("status"),
       notes: formData.get("notes").trim(),
-      createdAt: Date.now()
+      createdAt: currentItem?.createdAt || Date.now(),
+      updatedAt: Date.now()
     };
 
     await saveClosetItem(item);
     state = await loadState();
     elements.itemDialog.close();
+    editingItemId = null;
     render();
   } catch (error) {
     alert(error.message);
   }
+});
+
+elements.outfitView.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-edit-outfit]");
+  if (!button) return;
+  const outfit = state.outfits.find((item) => item.id === button.dataset.editOutfit);
+  if (outfit) openOutfitForm(outfit);
+});
+
+elements.closetView.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-edit-item]");
+  if (!button) return;
+  const item = state.closetItems.find((closetItem) => closetItem.id === button.dataset.editItem);
+  if (item) openItemForm(item);
 });
 
 function openDatabase() {
@@ -333,9 +350,10 @@ async function saveOutfit(outfit) {
   }
 
   const current = await loadState();
+  const outfits = current.outfits.filter((currentOutfit) => currentOutfit.id !== outfit.id);
   localStorage.setItem(FALLBACK_STORAGE_KEY, JSON.stringify({
     closetItems: current.closetItems,
-    outfits: [outfit, ...current.outfits]
+    outfits: [outfit, ...outfits]
   }));
 }
 
@@ -346,8 +364,9 @@ async function saveClosetItem(item) {
   }
 
   const current = await loadState();
+  const closetItems = current.closetItems.filter((currentItem) => currentItem.id !== item.id);
   localStorage.setItem(FALLBACK_STORAGE_KEY, JSON.stringify({
-    closetItems: [item, ...current.closetItems],
+    closetItems: [item, ...closetItems],
     outfits: current.outfits
   }));
 }
@@ -417,6 +436,56 @@ function openDialog(dialog) {
   }
 
   dialog.showModal();
+}
+
+function openOutfitForm(outfit = null) {
+  editingOutfitId = outfit?.id || null;
+  elements.outfitForm.reset();
+  fillLinkedItemOptions(outfit?.linkedItemIds || []);
+  initializeFormTagPickers(elements.outfitForm);
+
+  elements.outfitForm.querySelector("h3").textContent = outfit ? "编辑穿搭灵感" : "新增穿搭灵感";
+  elements.outfitForm.querySelector("button[type='submit']").textContent = outfit ? "保存修改" : "保存穿搭";
+
+  if (outfit) {
+    elements.outfitForm.title.value = outfit.title;
+    elements.outfitForm.image.value = outfit.image || "";
+    elements.outfitForm.replicaStatus.value = outfit.replicaStatus;
+    elements.outfitForm.notes.value = outfit.notes || "";
+    setTagFieldValues(elements.outfitForm, "styles", outfit.styles);
+    setTagFieldValues(elements.outfitForm, "seasons", outfit.seasons);
+    setTagFieldValues(elements.outfitForm, "mainColor", [outfit.mainColor]);
+    setTagFieldValues(elements.outfitForm, "pieces", outfit.pieces);
+    setTagFieldValues(elements.outfitForm, "occasions", outfit.occasions);
+    Array.from(elements.outfitForm.linkedItems.options).forEach((option) => {
+      option.selected = outfit.linkedItemIds.includes(option.value);
+    });
+  }
+
+  openDialog(elements.outfitDialog);
+}
+
+function openItemForm(item = null) {
+  editingItemId = item?.id || null;
+  elements.itemForm.reset();
+  initializeFormTagPickers(elements.itemForm);
+
+  elements.itemForm.querySelector("h3").textContent = item ? "编辑衣柜单品" : "新增衣柜单品";
+  elements.itemForm.querySelector("button[type='submit']").textContent = item ? "保存修改" : "保存单品";
+
+  if (item) {
+    elements.itemForm.name.value = item.name;
+    elements.itemForm.image.value = item.image || "";
+    elements.itemForm.type.value = item.type;
+    elements.itemForm.status.value = item.status;
+    elements.itemForm.notes.value = item.notes || "";
+    setTagFieldValues(elements.itemForm, "piece", [item.piece]);
+    setTagFieldValues(elements.itemForm, "mainColor", [item.mainColor]);
+    setTagFieldValues(elements.itemForm, "seasons", item.seasons);
+    setTagFieldValues(elements.itemForm, "styles", item.styles);
+  }
+
+  openDialog(elements.itemDialog);
 }
 
 function initializeFormTagPickers(form) {
@@ -522,6 +591,13 @@ function setFieldSelection(field, values) {
   field.dataset.values = JSON.stringify(values);
 }
 
+function setTagFieldValues(form, fieldName, values) {
+  const field = form.querySelector(`.tag-field[data-field="${fieldName}"]`);
+  if (!field) return;
+  setFieldSelection(field, values);
+  renderTagField(field);
+}
+
 function getTagFieldValues(form, fieldName) {
   const field = form.querySelector(`.tag-field[data-field="${fieldName}"]`);
   const values = field ? getFieldSelection(field) : [];
@@ -600,9 +676,9 @@ function fillSelect(select, label, values) {
   select.value = values.includes(selected) ? selected : "";
 }
 
-function fillLinkedItemOptions() {
+function fillLinkedItemOptions(selectedIds = []) {
   elements.outfitForm.linkedItems.innerHTML = state.closetItems
-    .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} / ${escapeHtml(item.piece)} / ${escapeHtml(item.mainColor)}</option>`)
+    .map((item) => `<option value="${escapeHtml(item.id)}" ${selectedIds.includes(item.id) ? "selected" : ""}>${escapeHtml(item.name)} / ${escapeHtml(item.piece)} / ${escapeHtml(item.mainColor)}</option>`)
     .join("");
 }
 
@@ -702,6 +778,9 @@ function renderOutfitCard(outfit) {
         <p class="meta">款式：${escapeHtml(outfit.pieces.join(" / "))}</p>
         <p class="linked">关联衣柜：${linkedItems.length ? escapeHtml(linkedItems.map((item) => item.name).join(" / ")) : "暂未关联"}</p>
         ${outfit.notes ? `<p class="meta">${escapeHtml(outfit.notes)}</p>` : ""}
+        <div class="card-actions">
+          <button class="secondary small-button" type="button" data-edit-outfit="${escapeHtml(outfit.id)}">详情/编辑</button>
+        </div>
       </div>
     </article>
   `;
@@ -725,6 +804,9 @@ function renderClosetCard(item) {
         </div>
         <p class="linked">已关联 ${linkedCount} 套穿搭灵感</p>
         ${item.notes ? `<p class="meta">${escapeHtml(item.notes)}</p>` : ""}
+        <div class="card-actions">
+          <button class="secondary small-button" type="button" data-edit-item="${escapeHtml(item.id)}">详情/编辑</button>
+        </div>
       </div>
     </article>
   `;
@@ -771,16 +853,11 @@ async function initializeApp() {
 
 function openDialogFromHash() {
   if (location.hash === "#add-outfit") {
-    elements.outfitForm.reset();
-    fillLinkedItemOptions();
-    initializeFormTagPickers(elements.outfitForm);
-    openDialog(elements.outfitDialog);
+    openOutfitForm();
   }
 
   if (location.hash === "#add-item") {
-    elements.itemForm.reset();
-    initializeFormTagPickers(elements.itemForm);
-    openDialog(elements.itemDialog);
+    openItemForm();
   }
 }
 

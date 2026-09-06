@@ -468,6 +468,12 @@ textarea {
   line-height: 1.5;
 }
 
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
 .empty {
   grid-column: 1 / -1;
   border: 1px dashed var(--line);
