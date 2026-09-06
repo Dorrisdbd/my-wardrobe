@@ -170,7 +170,8 @@ button {
 }
 
 .primary,
-.secondary {
+.secondary,
+.danger {
   min-height: 42px;
   border-radius: 8px;
   padding: 0 16px;
@@ -197,6 +198,17 @@ button {
 .secondary:hover {
   border-color: var(--line-strong);
   background: #fafafa;
+}
+
+.danger {
+  background: #fff5f5;
+  color: #a33131;
+  border: 1px solid #f0c8c8;
+}
+
+.danger:hover {
+  background: #feecec;
+  border-color: #e9a8a8;
 }
 
 .import-button {
@@ -272,6 +284,24 @@ input[type="file"]::file-selector-button {
   font: inherit;
   font-weight: 650;
   cursor: pointer;
+}
+
+.inline-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  align-self: end;
+}
+
+.inline-check input {
+  width: auto;
+  min-height: 0;
+}
+
+.inline-check span {
+  color: var(--ink);
+  font-size: 13px;
 }
 
 textarea {
@@ -520,6 +550,10 @@ dialog::backdrop {
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
+}
+
+.footer-spacer {
+  flex: 1;
 }
 
 .icon-button {

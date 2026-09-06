@@ -153,6 +153,10 @@ const elements = {
   colorFilter: document.querySelector("#colorFilter"),
   replicaFilter: document.querySelector("#replicaFilter"),
   replicaFilterWrap: document.querySelector("#replicaFilterWrap"),
+  typeFilter: document.querySelector("#typeFilter"),
+  typeFilterWrap: document.querySelector("#typeFilterWrap"),
+  statusFilter: document.querySelector("#statusFilter"),
+  statusFilterWrap: document.querySelector("#statusFilterWrap"),
   outfitCount: document.querySelector("#outfitCount"),
   closetCount: document.querySelector("#closetCount"),
   readyCount: document.querySelector("#readyCount"),
@@ -220,7 +224,7 @@ document.querySelectorAll("[data-close]").forEach((button) => {
   });
 });
 
-[elements.searchInput, elements.styleFilter, elements.seasonFilter, elements.colorFilter, elements.replicaFilter].forEach((input) => {
+[elements.searchInput, elements.styleFilter, elements.seasonFilter, elements.colorFilter, elements.replicaFilter, elements.typeFilter, elements.statusFilter].forEach((input) => {
   input.addEventListener("input", renderCards);
 });
 
@@ -231,10 +235,11 @@ elements.outfitForm.addEventListener("submit", async (event) => {
     const linkedItemIds = Array.from(elements.outfitForm.linkedItems.selectedOptions).map((option) => option.value);
     const uploadedImage = await readImageFile(elements.outfitForm.imageFile.files[0]);
     const currentOutfit = editingOutfitId ? state.outfits.find((outfit) => outfit.id === editingOutfitId) : null;
+    const image = formData.get("clearImage") ? "" : uploadedImage || formData.get("image").trim() || currentOutfit?.image || "";
     const outfit = {
       id: editingOutfitId || crypto.randomUUID(),
       title: formData.get("title").trim(),
-      image: uploadedImage || formData.get("image").trim() || currentOutfit?.image || "",
+      image,
       styles: getTagFieldValues(elements.outfitForm, "styles"),
       seasons: getTagFieldValues(elements.outfitForm, "seasons"),
       mainColor: getTagFieldValues(elements.outfitForm, "mainColor")[0],
@@ -263,10 +268,11 @@ elements.itemForm.addEventListener("submit", async (event) => {
     const formData = new FormData(elements.itemForm);
     const uploadedImage = await readImageFile(elements.itemForm.imageFile.files[0]);
     const currentItem = editingItemId ? state.closetItems.find((item) => item.id === editingItemId) : null;
+    const image = formData.get("clearImage") ? "" : uploadedImage || formData.get("image").trim() || currentItem?.image || "";
     const item = {
       id: editingItemId || crypto.randomUUID(),
       name: formData.get("name").trim(),
-      image: uploadedImage || formData.get("image").trim() || currentItem?.image || "",
+      image,
       type: formData.get("type"),
       piece: getTagFieldValues(elements.itemForm, "piece")[0],
       mainColor: getTagFieldValues(elements.itemForm, "mainColor")[0],
@@ -300,6 +306,26 @@ elements.closetView.addEventListener("click", (event) => {
   if (!button) return;
   const item = state.closetItems.find((closetItem) => closetItem.id === button.dataset.editItem);
   if (item) openItemForm(item);
+});
+
+elements.outfitForm.querySelector("[data-delete-outfit]").addEventListener("click", async () => {
+  if (!editingOutfitId) return;
+  if (!confirm("确定删除这套穿搭吗？删除后不能直接恢复。")) return;
+  await deleteOutfit(editingOutfitId);
+  state = await loadState();
+  elements.outfitDialog.close();
+  editingOutfitId = null;
+  render();
+});
+
+elements.itemForm.querySelector("[data-delete-item]").addEventListener("click", async () => {
+  if (!editingItemId) return;
+  if (!confirm("确定删除这个单品吗？相关穿搭里的关联也会移除。")) return;
+  await deleteClosetItem(editingItemId);
+  state = await loadState();
+  elements.itemDialog.close();
+  editingItemId = null;
+  render();
 });
 
 function openDatabase() {
@@ -343,6 +369,15 @@ function putRecord(storeName, record) {
   });
 }
 
+function deleteRecord(storeName, id) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, "readwrite");
+    transaction.objectStore(storeName).delete(id);
+    transaction.addEventListener("complete", resolve);
+    transaction.addEventListener("error", () => reject(transaction.error));
+  });
+}
+
 async function saveOutfit(outfit) {
   if (db) {
     await putRecord("outfits", outfit);
@@ -368,6 +403,38 @@ async function saveClosetItem(item) {
   localStorage.setItem(FALLBACK_STORAGE_KEY, JSON.stringify({
     closetItems: [item, ...closetItems],
     outfits: current.outfits
+  }));
+}
+
+async function deleteOutfit(id) {
+  if (db) {
+    await deleteRecord("outfits", id);
+    return;
+  }
+
+  const current = await loadState();
+  localStorage.setItem(FALLBACK_STORAGE_KEY, JSON.stringify({
+    closetItems: current.closetItems,
+    outfits: current.outfits.filter((outfit) => outfit.id !== id)
+  }));
+}
+
+async function deleteClosetItem(id) {
+  const current = await loadState();
+  const nextOutfits = current.outfits.map((outfit) => ({
+    ...outfit,
+    linkedItemIds: outfit.linkedItemIds.filter((itemId) => itemId !== id)
+  }));
+
+  if (db) {
+    await deleteRecord("closetItems", id);
+    await Promise.all(nextOutfits.map((outfit) => putRecord("outfits", outfit)));
+    return;
+  }
+
+  localStorage.setItem(FALLBACK_STORAGE_KEY, JSON.stringify({
+    closetItems: current.closetItems.filter((item) => item.id !== id),
+    outfits: nextOutfits
   }));
 }
 
@@ -446,10 +513,12 @@ function openOutfitForm(outfit = null) {
 
   elements.outfitForm.querySelector("h3").textContent = outfit ? "编辑穿搭灵感" : "新增穿搭灵感";
   elements.outfitForm.querySelector("button[type='submit']").textContent = outfit ? "保存修改" : "保存穿搭";
+  elements.outfitForm.querySelector("[data-delete-outfit]").classList.toggle("hidden", !outfit);
+  elements.outfitForm.clearImage.closest(".image-clear").classList.toggle("hidden", !outfit?.image);
 
   if (outfit) {
     elements.outfitForm.title.value = outfit.title;
-    elements.outfitForm.image.value = outfit.image || "";
+    elements.outfitForm.image.value = getEditableImageUrl(outfit.image);
     elements.outfitForm.replicaStatus.value = outfit.replicaStatus;
     elements.outfitForm.notes.value = outfit.notes || "";
     setTagFieldValues(elements.outfitForm, "styles", outfit.styles);
@@ -472,10 +541,12 @@ function openItemForm(item = null) {
 
   elements.itemForm.querySelector("h3").textContent = item ? "编辑衣柜单品" : "新增衣柜单品";
   elements.itemForm.querySelector("button[type='submit']").textContent = item ? "保存修改" : "保存单品";
+  elements.itemForm.querySelector("[data-delete-item]").classList.toggle("hidden", !item);
+  elements.itemForm.clearImage.closest(".image-clear").classList.toggle("hidden", !item?.image);
 
   if (item) {
     elements.itemForm.name.value = item.name;
-    elements.itemForm.image.value = item.image || "";
+    elements.itemForm.image.value = getEditableImageUrl(item.image);
     elements.itemForm.type.value = item.type;
     elements.itemForm.status.value = item.status;
     elements.itemForm.notes.value = item.notes || "";
@@ -639,6 +710,10 @@ function readImageFile(file) {
   });
 }
 
+function getEditableImageUrl(src) {
+  return src?.startsWith("data:") ? "" : src || "";
+}
+
 function unique(values) {
   return Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b, "zh-CN"));
 }
@@ -648,6 +723,8 @@ function render() {
   elements.outfitView.classList.toggle("hidden", currentView !== "outfits");
   elements.closetView.classList.toggle("hidden", currentView !== "closet");
   elements.replicaFilterWrap.classList.toggle("hidden", currentView !== "outfits");
+  elements.typeFilterWrap.classList.toggle("hidden", currentView !== "closet");
+  elements.statusFilterWrap.classList.toggle("hidden", currentView !== "closet");
   renderFilters();
   renderCards();
   renderStats();
@@ -663,11 +740,15 @@ function renderFilters() {
   const colors = currentView === "outfits"
     ? state.outfits.map((item) => item.mainColor)
     : state.closetItems.map((item) => item.mainColor);
+  const types = state.closetItems.map((item) => item.type);
+  const statuses = state.closetItems.map((item) => item.status);
 
   fillSelect(elements.styleFilter, "全部风格", unique(styles));
   fillSelect(elements.seasonFilter, "全部季节", unique(seasons));
   fillSelect(elements.colorFilter, "全部主色", unique(colors));
   fillSelect(elements.replicaFilter, "全部状态", ["可复刻", "缺少单品", "仅作灵感"]);
+  fillSelect(elements.typeFilter, "全部类型", unique(types));
+  fillSelect(elements.statusFilter, "全部状态", unique(statuses));
 }
 
 function fillSelect(select, label, values) {
@@ -757,7 +838,9 @@ function matchesClosetFilters(item) {
   return (!search || searchText.includes(search))
     && (!elements.styleFilter.value || item.styles.includes(elements.styleFilter.value))
     && (!elements.seasonFilter.value || item.seasons.includes(elements.seasonFilter.value))
-    && (!elements.colorFilter.value || item.mainColor === elements.colorFilter.value);
+    && (!elements.colorFilter.value || item.mainColor === elements.colorFilter.value)
+    && (!elements.typeFilter.value || item.type === elements.typeFilter.value)
+    && (!elements.statusFilter.value || item.status === elements.statusFilter.value);
 }
 
 function renderOutfitCard(outfit) {

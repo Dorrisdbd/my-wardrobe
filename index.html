@@ -83,6 +83,14 @@
             <span>复刻状态</span>
             <select id="replicaFilter"></select>
           </label>
+          <label id="typeFilterWrap" class="hidden">
+            <span>类型</span>
+            <select id="typeFilter"></select>
+          </label>
+          <label id="statusFilterWrap" class="hidden">
+            <span>状态</span>
+            <select id="statusFilter"></select>
+          </label>
         </section>
 
         <section id="outfitView" class="content-grid" aria-live="polite"></section>
@@ -110,6 +118,10 @@
             <span>本地图片</span>
             <input name="imageFile" type="file" accept="image/*" />
           </label>
+          <label class="inline-check image-clear">
+            <input name="clearImage" type="checkbox" />
+            <span>清空当前图片</span>
+          </label>
           <div class="tag-field" data-field="styles" data-label="风格" data-required="true"></div>
           <div class="tag-field" data-field="seasons" data-label="季节" data-required="true"></div>
           <div class="tag-field" data-field="mainColor" data-label="主色" data-required="true" data-single="true"></div>
@@ -134,6 +146,8 @@
         </div>
 
         <footer>
+          <button class="danger hidden" type="button" data-delete-outfit>删除穿搭</button>
+          <span class="footer-spacer"></span>
           <button class="secondary" type="button" data-close="outfitDialog">取消</button>
           <button class="primary" type="submit">保存穿搭</button>
         </footer>
@@ -159,6 +173,10 @@
           <label>
             <span>本地图片</span>
             <input name="imageFile" type="file" accept="image/*" />
+          </label>
+          <label class="inline-check image-clear">
+            <input name="clearImage" type="checkbox" />
+            <span>清空当前图片</span>
           </label>
           <label>
             <span>类型</span>
@@ -191,6 +209,8 @@
         </div>
 
         <footer>
+          <button class="danger hidden" type="button" data-delete-item>删除单品</button>
+          <span class="footer-spacer"></span>
           <button class="secondary" type="button" data-close="itemDialog">取消</button>
           <button class="primary" type="submit">保存单品</button>
         </footer>
